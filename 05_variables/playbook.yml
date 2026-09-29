@@ -1,0 +1,71 @@
+---
+
+##############################
+# Play 01 - 웹 서버 설정
+#   1) 웹 패키지 설치 - httpd, mod_ssl, firewalld
+#   2) 웹 서비스 설정 - /var/www/html/index.html
+#   3) 웹 서비스 기동 - httpd, firewalld
+#   4) 방화벽 등록 - http, https
+# Play 02 - 웹 요청
+#   1) 웹 요청(웹 테스트) - http://192.168.10.11
+##############################
+
+- name: Play 01 - 웹 서버 설정
+  hosts: webservers
+  vars:
+    pkg_http: httpd
+    pkg_https: mod_ssl
+    pkg_fw: firewalld
+    inx_dest: /var/www/html/index.html
+    svc_web: httpd
+    svc_fw: firewalld
+    fw_80: http
+    fw_8080: https
+  tasks:
+    - name: 1) 웹 패키지 설치 -  "{{ pkg_http }}", "{{ pkg_https }}", "{{ pkg_fw }}"
+      ansible.builtin.dnf:
+        name:
+          - "{{ pkg_http }}"
+          - "{{ pkg_https }}"
+          - "{{ pkg_fw }}"
+        state: present
+    
+    - name: 2) 웹 서비스 설정 - "{{ inx_dest }}"
+      ansible.builtin.copy:
+        content: "web1.example.com\n"
+        dest: "{{ inx_dest }}"
+        mode: '0644'
+    
+    - name: 3) 웹 서비스 기동 - "{{ svc_web }}", "{{ svc_fw }}"
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+      loop:
+        - "{{ svc_web }}"
+        - "{{ svc_fw }}"
+    
+    - name: 4) 방화벽 등록 - "{{ fw_80 }}", "{{ fw_8080 }}"
+      ansible.posix.firewalld:
+        service: "{{ item }}"
+        state: enabled
+        permanent: true
+        immediate: true
+      loop:
+        - "{{ fw_80 }}"
+        - "{{ fw_8080 }}"
+
+- name: Play 02 - 웹 요청
+  hosts: localhost
+  become: false
+  vars:
+    url_web1: http://192.168.10.11
+  tasks:
+    - name: 1) 웹 요청(웹테스트) - "{{ url_web1 }}"
+      ansible.builtin.uri:
+        url: "{{ url_web1 }}"
+        return_content: true
+      register: resp
+    - name: 2) HTMP Response
+      ansible.builtin.debug:
+        var: resp["content"]

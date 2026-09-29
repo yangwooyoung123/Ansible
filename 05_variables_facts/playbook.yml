@@ -1,0 +1,59 @@
+---
+########################################
+# Play 01: .htaccess 파일 사용하는 웹서버 구축
+# * (ㄱ) 패키지 설치 - httpd, mod_ssl, firewalld
+# * (ㄴ) 서비스 설정 - copy 모듈 사용 -> 반복 구문으로 잡을 거임
+#   - /etc/httpd/conf/httpd.conf(AllowOveride AuthConfig) 
+#   - /var/www/html/.htaccess
+#   - /etc/httpd/secrets/htpasswd
+#   - /var/www/html/index.html
+# * (ㄷ) 서비스 기동 - httpd, firewalld
+# * (ㄹ) 방화벽 등록 - http, https
+# Play 02: 웹 요청 - https로 들어갈때 인증 무시, id/pw-> ansible-vault
+########################################
+
+- name: Play 01 - .htaccess 파일 사용하는 웹서버 구축
+  hosts: webservers
+  tasks:
+    - name: 1) 패키지 설치 - httpd, mod_ssl, firewalld
+      ansible.builtin.dnf:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - httpd
+        - mod_ssl
+        - firewalld
+    - name: 2) 서비스 설정 - /etc/httpd/conf/httpd.conf(AllowOveride AuthConfig)
+      ansible.builtin.copy:
+        src: files/httpd.conf
+        dest: /etc/httpd/conf
+        owner: root
+        group: root
+        mode: '0644'
+    - name: 2) 서비스 설정 - /var/www/html/.htaccess
+      ansible.builtin.copy:
+        src: files/.htaccess
+        dest: /var/www/html
+        owner: root
+        group: root
+        mode: '0600'
+    - name: 2) 서비스 설정 - /etc/httpd/secrets/htpasswd
+      ansible.builtin.copy:
+        src: files/htpasswd
+        dest: /etc/httpd/secrets
+        owner: root
+        group: root
+        mode: '0600'
+    - name: 2) 서비스 설정 - /var/www/html/index.html
+      ansible.builtin.copy:
+        content: 'hello world'
+        dest: /var/www/html/index.html
+
+    - name: 3) 서비스 기동 - httpd, firewalld
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: started
+      loop:
+        - httpd
+        - firewalld
+

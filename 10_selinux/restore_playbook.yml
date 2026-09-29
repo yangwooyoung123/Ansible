@@ -1,0 +1,56 @@
+---
+- name: SELinux 원복
+  hosts: webservers
+  become: true
+
+  vars:
+    selinux_booleans:
+      - name: httpd_can_network_connect
+        state: false
+        persistent: true
+
+    selinux_fcontexts:
+      - target: '/www(/.*)?'
+        setype: httpd_sys_content_t
+        state: absent
+
+    selinux_ports:
+      - ports: 8888
+        proto: tcp
+        setype: http_port_t
+        state: absent
+
+  tasks:
+    - name: firewalld 실행 보장
+      ansible.builtin.systemd:
+        name: firewalld
+        state: started
+
+    - name: 방화벽 8888/tcp 해제
+      ansible.posix.firewalld:
+        port: 8888/tcp
+        permanent: true
+        immediate: true
+        state: disabled
+
+    - name: httpd 중지 및 자동시작 해제
+      ansible.builtin.systemd:
+        name: httpd
+        state: stopped
+        enabled: false
+
+    - name: SELinux 설정 원복
+      ansible.builtin.include_role:
+        name: rhel-system-roles.selinux
+
+    - name: /www 삭제
+      ansible.builtin.file:
+        path: /www
+        state: absent
+
+    - name: httpd, mod_ssl 삭제
+      ansible.builtin.dnf:
+        name:
+          - httpd
+          - mod_ssl
+        state: absent

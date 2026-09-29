@@ -1,0 +1,23 @@
+---
+
+- name: Restore playbook.yml
+  hosts: all
+  # 하기전에 먼저 ssh 인증키 방식이 되어 있는지 확인해봐야 함
+  remote_user: root
+  tasks:
+    - name: 2) DB 서비스 중지 - mariadb 
+      ansible.builtin.systemd_service:
+        name: mariadb
+        state: stopped
+        enabled: false
+
+    - name: 1) DB 패키지 설치 - mariadb, mariadb-server, python3-PyMySQL
+      ansible.builtin.dnf:
+        name:
+          - mariadb
+          - mariadb-server
+          - python3-PyMySQL
+        state: absent
+
+
+    

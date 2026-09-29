@@ -1,0 +1,67 @@
+---
+
+###############################
+# 1. 웹 서버 설정 - web1
+#   1) 패키지 설치 - dnf(httpd)
+#     dnf install httpd
+#   2) 서비스 설정
+#     # cp files/index.html web1:/var/www/html/index.html
+#   3) 서비스 기동
+#     # systemctl enable httpd
+#     # systemctl enable --now firewalld
+#   4) 방화벽 등록 - firewalld(http(80/tcp))
+#     # firewall-cmd --permanant --add-service-http
+# 1. 웹 확인 - localhost -> web1
+#   1) 웹 요청 - uri(http://web1.example.com)
+#     # curl http://web1.example.com
+###############################
+
+- name: 1. 웹 서버 설정 - web1
+  hosts: webservers
+  tasks:
+    - name: 1) 패키지 설치 - dnf(httpd && firewalld)
+      ansible.builtin.dnf:
+        name:
+          - httpd
+          - firewalld
+        state: present
+
+    - name: 2) 서비스 설정 - copy(/var/www/html/index.html)
+      ansible.builtin.copy:
+        src: files/index.html
+        dest: /var/www/html/index.html
+        mode: '0644'
+    
+    - name: 3) 서비스 기동 - systemd_service/service(httpd, firewalld)
+      ansible.builtin.systemd_service:
+        name: httpd
+        state: started
+        enabled: true
+
+    - name: 3) 서비스 기동 - systemd_service/service(httpd, firewalld)
+      ansible.builtin.systemd_service:
+        name: firewalld
+        state: started
+        enabled: true
+
+    - name: 4) 방화벽 등록 - firewalld(http(80/tcp))
+      ansible.posix.firewalld:
+        service: http
+        state: enabled
+        permanent: true
+        immediate: true
+
+- name: 2. 웹 확인
+  hosts: localhost
+  become: false
+  tasks:
+    - name: 1) 웹 요청 - http://web1.example.com
+      ansible.builtin.uri:
+        url: http://web1.example.com
+        return_content: true
+      register: html
+
+    - name: 2) 웹 응답
+      ansible.builtin.debug:
+        var: html
+      
