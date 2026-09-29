@@ -1,0 +1,51 @@
+---
+# git_push.yml
+- name: Ansible 실습 자동 Git 커밋 & Push
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    repo_path: /home/ansible/ansible
+
+  vars_prompt:
+    - name: commit_msg
+      prompt: "커밋 메시지를 입력하세요"
+      private: false
+      default: "auto update {{ lookup('pipe', 'date +%Y-%m-%d_%H:%M:%S') }}"
+
+  tasks:
+    - name: 변경사항 스테이징
+      ansible.builtin.command:
+        cmd: git add -A
+        chdir: "{{ repo_path }}"
+      changed_when: false
+
+    - name: 변경사항 있는지 확인
+      ansible.builtin.command:
+        cmd: git status --porcelain
+        chdir: "{{ repo_path }}"
+      register: git_status
+      changed_when: false
+
+    - name: 변경사항 커밋
+      ansible.builtin.command:
+        cmd: "git commit -m \"{{ commit_msg }}\""
+        chdir: "{{ repo_path }}"
+      when: git_status.stdout != ""
+
+    - name: main 브랜치로 push
+      ansible.builtin.command:
+        cmd: git push origin main
+        chdir: "{{ repo_path }}"
+      when: git_status.stdout != ""
+
+    - name: 결과 출력 - 변경사항 없음
+      ansible.builtin.debug:
+        msg: "변경사항이 없어서 commit/push를 건너뛰었습니다."
+      when: git_status.stdout == ""
+
+    - name: 결과 출력 - 완료
+      ansible.builtin.debug:
+        msg: "커밋 메시지 '{{ commit_msg }}'로 main 브랜치에 push 완료!"
+      when: git_status.stdout != ""
